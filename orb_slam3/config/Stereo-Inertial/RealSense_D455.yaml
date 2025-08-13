@@ -1,0 +1,130 @@
+%YAML:1.0
+
+# RealSense D455 Stereo-Inertial (optimized for stability)
+Camera.type: "PinHole"
+
+# Left camera intrinsics (from camera_info)
+Camera.fx: 426.153
+Camera.fy: 426.153
+Camera.cx: 423.667
+Camera.cy: 240.551
+
+# Left distortion (rectified input assumed → zeros)
+Camera.k1: 0.0
+Camera.k2: 0.0
+Camera.p1: 0.0
+Camera.p2: 0.0
+
+# Right camera intrinsics
+Camera2.fx: 426.153
+Camera2.fy: 426.153
+Camera2.cx: 423.667
+Camera2.cy: 240.551
+
+# Right distortion
+Camera2.k1: 0.0
+Camera2.k2: 0.0
+Camera2.p1: 0.0
+Camera2.p2: 0.0
+
+# Baseline transform (left→right) - 95mm baseline
+Tlr: !!opencv-matrix
+  rows: 3
+  cols: 4
+  dt: f
+  data: [1.0, 0.0, 0.0, 0.095,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 1.0, 0.0]
+
+# Rectification/projection (matching camera_info)
+LEFT.K: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: f
+  data: [426.153, 0.0, 423.667,
+         0.0, 426.153, 240.551,
+         0.0, 0.0, 1.0]
+RIGHT.K: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: f
+  data: [426.153, 0.0, 423.667,
+         0.0, 426.153, 240.551,
+         0.0, 0.0, 1.0]
+LEFT.R: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: f
+  data: [1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0]
+RIGHT.R: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: f
+  data: [1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0]
+LEFT.P: !!opencv-matrix
+  rows: 3
+  cols: 4
+  dt: f
+  data: [426.153, 0.0, 423.667, 0.0,
+         0.0, 426.153, 240.551, 0.0,
+         0.0, 0.0, 1.0, 0.0]
+RIGHT.P: !!opencv-matrix
+  rows: 3
+  cols: 4
+  dt: f
+  data: [426.153, 0.0, 423.667, -40.509,
+         0.0, 426.153, 240.551, 0.0,
+         0.0, 0.0, 1.0, 0.0]
+
+# Image size and fps
+Camera.width: 848
+Camera.height: 480
+Camera.fps: 30.0
+Camera.RGB: 1
+
+# Depth/scale
+ThDepth: 40.0
+Camera.bf: 40.485
+
+# IMU extrinsics (camera_link → camera_infra1_optical_frame)
+# RealSense D455: IMU is ~5mm offset from left camera
+Tbc: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: f
+  data: [1, 0, 0, -0.005,
+         0, 1, 0, -0.005,
+         0, 0, 1, 0.0117,
+         0.0, 0.0, 0.0, 1.0]
+
+# IMU noise (more conservative for stability)
+IMU.NoiseGyro: 0.003        # Increased from 0.002
+IMU.NoiseAcc: 0.03          # Increased from 0.02  
+IMU.GyroWalk: 0.00002       # Increased from 0.00001
+IMU.AccWalk: 0.002          # Increased from 0.001
+IMU.Frequency: 200
+IMU.fastInit: 1
+
+# ORB (increased features for better tracking)
+ORBextractor.nFeatures: 1500    # Increased from 1200
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8         # Increased from 6
+ORBextractor.iniThFAST: 15      # Increased from 12
+ORBextractor.minThFAST: 7       # Increased from 5
+
+# Viewer
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3
+Viewer.ViewpointX: 0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -3.5
+Viewer.ViewpointF: 500
+

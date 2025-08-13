@@ -1,3 +1,36 @@
-README.md
-*.mp4
+# Build artifacts
+build/
+install/
+log/
+
+# ROS2 build artifacts
+*.so
+*.a
+*.o
+*.pyc
+__pycache__/
+
+# IDE files
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Package specific
+*.db
+*.db-*

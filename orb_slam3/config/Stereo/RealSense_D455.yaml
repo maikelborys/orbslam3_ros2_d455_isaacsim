@@ -1,0 +1,51 @@
+%YAML:1.0
+
+# RealSense D455 Stereo (Rectified) — Minimal settings
+# Note: Example values; calibrate your device for best results.
+
+# Use pinhole rectified model expected by ORB‑SLAM3 stereo
+Camera.type: "PinHole"
+
+# Intrinsics (rectified)
+Camera.fx: 426.153
+Camera.fy: 426.153
+Camera.cx: 423.667
+Camera.cy: 240.551
+
+# Distortion (rectified → zero)
+Camera.k1: 0.0
+Camera.k2: 0.0
+Camera.p1: 0.0
+Camera.p2: 0.0
+
+# Baseline times fx (bf = baseline[m] * fx)
+Camera.bf: 40.485  # 0.095 * 426.153
+
+# Image parameters
+Camera.width: 848
+Camera.height: 480
+Camera.fps: 30
+Camera.RGB: 1
+
+# Depth threshold (in baseline units)
+ThDepth: 40.0
+
+# ORB extractor parameters
+ORBextractor.nFeatures: 1000
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+# Viewer parameters
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -3.5
+Viewer.ViewpointF: 500.0
+

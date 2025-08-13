@@ -19,12 +19,16 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 # find_package(your_custom_msg_interface REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.3.0 REQUIRED) # Matched with Sophus
 find_package(Pangolin REQUIRED)
 find_package(image_transport REQUIRED)
+find_package(realsense2 REQUIRED)
 
 
 # Header file locations [C++ node]
@@ -51,6 +55,9 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   rclpy
   std_msgs
   sensor_msgs
+  nav_msgs
+  geometry_msgs
+  tf2_ros
   # your_custom_msg_interface
   cv_bridge
   image_transport
@@ -163,6 +170,30 @@ ament_target_dependencies(mono_node_cpp
 
 target_link_libraries(mono_node_cpp PUBLIC orb_slam3_lib) # Link a node with the internal shared library
 
+# Stereo executable
+add_executable(stereo_node_cpp
+  src/stereo_main.cpp
+  src/stereo.cpp
+)
+
+ament_target_dependencies(stereo_node_cpp
+  PUBLIC ${THIS_PACKAGE_INCLUDE_DEPENDS}
+)
+
+target_link_libraries(stereo_node_cpp PUBLIC orb_slam3_lib)
+
+# Stereo-Inertial executable
+add_executable(stereo_inertial_node_cpp
+  src/stereo_inertial_main.cpp
+  src/stereo_inertial.cpp
+)
+
+ament_target_dependencies(stereo_inertial_node_cpp
+  PUBLIC ${THIS_PACKAGE_INCLUDE_DEPENDS}
+)
+
+target_link_libraries(stereo_inertial_node_cpp PUBLIC orb_slam3_lib)
+
 
 # Install all the header files in package/package/include
 install (DIRECTORY include/ 
@@ -170,11 +201,31 @@ install (DIRECTORY include/
 )
 
 # Install our node and library
-install(TARGETS mono_node_cpp orb_slam3_lib
+install(TARGETS mono_node_cpp stereo_node_cpp stereo_inertial_node_cpp orb_slam3_lib
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   INCLUDES DESTINATION include/${PROJECT_NAME}
+)
+
+# Direct RealSense + ORB-SLAM3 test (no ROS2)
+add_executable(test_realsense_direct
+  test_realsense_direct.cpp
+)
+
+ament_target_dependencies(test_realsense_direct
+  PUBLIC ${THIS_PACKAGE_INCLUDE_DEPENDS}
+)
+
+target_link_libraries(test_realsense_direct
+  PUBLIC
+    orb_slam3_lib
+    realsense2::realsense2
+    ${OpenCV_LIBS}
+)
+
+install(TARGETS test_realsense_direct
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 # Tell downstream packages where to find the headers
@@ -194,7 +245,14 @@ ament_python_install_package(${PROJECT_NAME}) # Install the modules in ros2_orb_
 # Install Python executibles
 install(PROGRAMS
   scripts/mono_driver_node.py
+  scripts/realsense_mono_bridge_node.py
+  scripts/realsense_stereo_bridge_node.py
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install launch files
+install(DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
 )
 
 

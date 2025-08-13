@@ -3,40 +3,19 @@
 ![ROS2](https://img.shields.io/badge/ROS2-Humble-blue.svg)
 ![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)
 
-# ROS2 ORB SLAM3 V1.0 package 
+# ROS2 wrapper for ORB SLAM3 
 
-A ROS2 package for ORB SLAM3 V1.0. Focus is on native integration with ROS2 ecosystem. This is the `main/humble` branch which only supports ROS 2 Humble. Switch over to `jazzy` branch to use with ROS 2 Jazzy.
+Starting point of my research was working wrapper of [Mechazo11] (https://github.com/Mechazo11/ros2_orb_slam3).
 
-My goal is to provide a "bare-bones" starting point for developers in using ORB SLAM3 framework in their ROS 2 projects. Hence, this package will not use any advanced features of ROS 2 such as rviz, tf, launch files etc. The project structure is heavily influenced by the excellent ROS1 port of ORB SLAM3 by [thien94](https://github.com/thien94/orb_slam3_ros/tree/master). 
+Works with custom topics. Works with D455, stereo and stereo imu mode. 
 
-If you find this work useful please consider citing the original ORB-SLAM3 paper and my recent paper that uses this package in solving short-term relocalization (kidnapped robot problem) as shown below
+![ORB-SLAM3 Stereo-Inertial Demo](imgs/Screenshot%20from%202025-08-12%2018-59-40.png)
 
-```bibtex
-@INPROCEEDINGS{kamal2024solving,
-  author={Kamal, Azmyin Md. and Dadson, Nenyi Kweku Nkensen and Gegg, Donovan and Barbalata, Corina},
-  booktitle={2024 IEEE International Conference on Advanced Intelligent Mechatronics (AIM)}, 
-  title={Solving Short-Term Relocalization Problems In Monocular Keyframe Visual SLAM Using Spatial And Semantic Data}, 
-  year={2024},
-  volume={},
-  number={},
-  pages={615-622},
-  keywords={Visualization;Simultaneous localization and mapping;Accuracy;Three-dimensional displays;Semantics;Robot vision systems;Pipelines},
-  doi={10.1109/AIM55361.2024.10637187}}
-```
+![ORB-SLAM3 RealSense D455](imgs/Screenshot%20from%202025-08-13%2013-13-01.png)
 
-```bibtex
-@article{ORBSLAM3_TRO,
-  title={{ORB-SLAM3}: An Accurate Open-Source Library for Visual, Visual-Inertial 
-           and Multi-Map {SLAM}},
-  author={Campos, Carlos AND Elvira, Richard AND G\´omez, Juan J. AND Montiel, 
-          Jos\'e M. M. AND Tard\'os, Juan D.},
-  journal={IEEE Transactions on Robotics}, 
-  volume={37},
-  number={6},
-  pages={1874-1890},
-  year={2021}
- }
-```
+
+
+----------------------------------------------------------------------------------
 
 ## 0. Preamble
 
@@ -126,42 +105,190 @@ Follow the steps below to create the ```ros2_test``` workspace, install dependen
 cd ~
 mkdir -p ~/ros2_test/src
 cd ~/ros2_test/src
-git clone https://github.com/Mechazo11/ros2_orb_slam3.git
+git clone https://github.com/maikelborys/orbslam3_ros2_d455_isaacsim.git
 cd .. # make sure you are in ~/ros2_ws root directory
 rosdep install -r --from-paths src --ignore-src -y --rosdistro humble
 source /opt/ros/humble/setup.bash
 colcon build --symlink-install
+
+3. **Install Dependencies**:
+   ```bash
+   # ROS2 dependencies
+   sudo apt install ros-humble-cv-bridge ros-humble-sensor-msgs ros-humble-geometry-msgs ros-humble-nav-msgs ros-humble-tf2-ros
+   
+   # RealSense SDK (if using D455)
+   sudo apt install ros-humble-realsense2-camera
+   ```
+
+### Build ROS2 Wrapper
+```bash
+cd ~/ros2_test
+source /opt/ros/humble/setup.bash
+colcon build --packages-select ros2_orb_slam3 --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
-## 3. Monocular Example:
+## Quick Start (Odometry + TF + RViz)
 
-Run the builtin example to verify the package is working correctly
-In one terminal [cpp node]
+This customization adds odometry publishing and optional TF broadcasting to the C++ node, plus a simple RViz flow.
 
+### Build
 ```bash
-cd ~/ros2_ws/
-source ./install/setup.bash
-ros2 run ros2_orb_slam3 mono_node_cpp --ros-args -p node_name_arg:=mono_slam_cpp
+cd $HOME/ros2_test
+source /opt/ros/$ROS_DISTRO/setup.bash
+colcon build --packages-select ros2_orb_slam3 --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
-In another terminal [python node]
+### Run (Monocular example)
+Ensure a EuRoC-style dataset exists at:
+`$HOME/ros2_test/src/ros2_orb_slam3/TEST_DATASET/sample_euroc_MH05/mav0/cam0/data/`
 
+1) Start ORB‑SLAM3 C++ node (publishes odometry + TF)
 ```bash
-cd ~/ros2_ws
-source ./install/setup.bash
+cd $HOME/ros2_test && source ./install/setup.bash && \
+ros2 run ros2_orb_slam3 mono_node_cpp \
+  --ros-args \
+  -p node_name_arg:=mono_slam_cpp \
+  -p odom_topic:=/orb_slam3/odometry \
+  -p odom_frame_id:=map \
+  -p base_frame_id:=camera_link \
+  -p publish_tf:=true
+```
+
+2) Feed images with the Python driver
+```bash
+cd $HOME/ros2_test && source ./install/setup.bash && \
 ros2 run ros2_orb_slam3 mono_driver_node.py --ros-args -p settings_name:=EuRoC -p image_seq:=sample_euroc_MH05
 ```
 
-Both nodes would perform a handshake and the VSLAM framework would then work as shown in the following video clip
+3) Visualize in RViz2
+```bash
+cd $HOME/ros2_test && source ./install/setup.bash && ros2 run rviz2 rviz2
+```
+- Set Fixed Frame: `map`
+- Add Odometry display → Topic: `/orb_slam3/odometry`
+- Optional: Add TF to see `map -> camera_link`
 
 
-https://github.com/Mechazo11/ros2_orb_slam3/assets/44814419/af9eaa79-da4b-4405-a4d7-e09242ab9660
+### Run (Stereo‑Inertial, RealSense D455) — parameterized
+You can now run fully via ROS 2 parameters (no positional args), making it easy to swap topics, YAMLs, and frames.
+```
+cd $HOME/ros2_test && source ./install/setup.bash && \
+ros2 run ros2_orb_slam3 stereo_inertial_node_cpp --ros-args \
+  -p voc_file_arg:=$HOME/ros2_test/src/ros2_orb_slam3/orb_slam3/Vocabulary/ORBvoc.txt.bin \
+  -p settings_file_path_arg:=$HOME/ros2_test/src/ros2_orb_slam3/orb_slam3/config/Stereo-Inertial/ \
+  -p settings_name:=RealSense_D455 \
+  -p left_image_topic:=/camera/camera/infra1/image_rect_raw \
+  -p right_image_topic:=/camera/camera/infra2/image_rect_raw \
+  -p imu_topic:=/camera/camera/imu \
+  -p do_rectify:=false -p use_clahe:=false \
+  -p odom_topic:=/orb_slam3/odometry -p odom_frame_id:=map -p base_frame_id:=camera_link -p publish_tf:=true
+```
+Notes:
+- If you set `do_rectify:=true`, your YAML must provide `LEFT.*`/`RIGHT.*` rectification blocks.
+- IMU initialization: set `IMU.fastInit: 1` in the YAML to bypass the “not enough acceleration” gate if starting gently.
+- Performance: 640x480@30 tends to be smoother on modest CPUs.
 
 
-Thank you for taking the time in checking this project out. I hope it helps you out. If you find this package useful in your project consider citing the papers mentioned above
 
-## TODO next version:
 
-- [ ] Stereo mode example
-- [ ] RGBD mode example
-- [ ] Detailed build instructions for `aarch64` based computers i.e. Orin Nano, Raspberry Pi etc.
+----------- Gracias ----------- 
+```bibtex
+@INPROCEEDINGS{kamal2024solving,
+  author={Kamal, Azmyin Md. and Dadson, Nenyi Kweku Nkensen and Gegg, Donovan and Barbalata, Corina},
+  booktitle={2024 IEEE International Conference on Advanced Intelligent Mechatronics (AIM)}, 
+  title={Solving Short-Term Relocalization Problems In Monocular Keyframe Visual SLAM Using Spatial And Semantic Data}, 
+  year={2024},
+  volume={},
+  number={},
+  pages={615-622},
+  keywords={Visualization;Simultaneous localization and mapping;Accuracy;Three-dimensional displays;Semantics;Robot vision systems;Pipelines},
+  doi={10.1109/AIM55361.2024.10637187}}
+```
+
+```bibtex
+@article{ORBSLAM3_TRO,
+  title={{ORB-SLAM3}: An Accurate Open-Source Library for Visual, Visual-Inertial 
+           and Multi-Map {SLAM}},
+  author={Campos, Carlos AND Elvira, Richard AND G\´omez, Juan J. AND Montiel, 
+          Jos\'e M. M. AND Tard\'os, Juan D.},
+  journal={IEEE Transactions on Robotics}, 
+  volume={37},
+  number={6},
+  pages={1874-1890},
+  year={2021}
+ }
+```
+
+## 🚀 TODO List - Complete SLAM System Roadmap
+
+### 🔧 **Core SLAM Features**
+- [ ] **Map Management**
+  - [ ] Map saving/loading (binary and text formats)
+  - [ ] Map merging and optimization
+  - [ ] Multi-session mapping support
+  - [ ] Map versioning and compatibility
+- [ ] **Localization & Relocalization**
+  - [ ] Standalone localization mode
+  - [ ] Global relocalization from scratch
+  - [ ] Loop closure detection and optimization
+  - [ ] Kidnapped robot problem solver
+- [ ] **Robustness Improvements**
+  - [ ] Dynamic object filtering
+  - [ ] Lighting condition adaptation
+  - [ ] Motion blur compensation
+  - [ ] Sensor fusion with wheel odometry
+
+
+### 📊 **Visualization & Monitoring**
+- [ ] **RViz2 Integration**
+  - [ ] Point cloud visualization
+  - [ ] Trajectory plotting
+  - [ ] Keyframe visualization
+  - [ ] Map landmarks display
+  - [ ] Loop closure visualization
+  - [ ] Real-time performance metrics
+
+
+### 🤖 **Robot Integration**
+- [ ] **Navigation Stack**
+  - [ ] Costmap generation from SLAM
+  - [ ] NAV2 integration
+
+
+### ⚙️ **Configuration & Deployment**
+  - [ ] GPU acceleration support
+
+### 📈 **Performance & Optimization**
+  - [ ] GPU acceleration (CUDA)
+
+
+### 🛡️ **Reliability & Safety**
+- [ ] **Error Handling**
+  - [ ] Graceful failure recovery
+  - [ ] Automatic restart mechanisms
+  - [ ] Health monitoring
+- [ ] **Data Validation**
+  - [ ] Input data validation
+  - [ ] Configuration validation
+  - [ ] Sensor data quality checks
+- [ ] **Backup & Recovery**
+  - [ ] Automatic map backups
+  - [ ] Configuration backups
+  - [ ] Recovery procedures
+
+
+### 🎯 **Advanced Features**
+- [ ] **Semantic SLAM**
+  - [ ] Object detection integration
+  - [ ] Room segmentation
+  - [ ] Semantic mapping
+- [ ] **Dynamic Environments**
+  - [ ] Moving object tracking
+  - [ ] Environment change detection
+  - [ ] Adaptive mapping
+- [ ] **Long-term SLAM**
+  - [ ] Seasonal changes handling
+  - [ ] Long-term map maintenance
+  - [ ] Incremental learning
+
+---

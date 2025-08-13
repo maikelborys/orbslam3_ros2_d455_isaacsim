@@ -26,6 +26,10 @@
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include "sensor_msgs/msg/image.hpp"
+// Odometry and TF
+#include <nav_msgs/msg/odometry.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <tf2_ros/transform_broadcaster.h>
 using std::placeholders::_1; //* TODO why this is suggested in official tutorial
 
 // Include Eigen
@@ -73,8 +77,10 @@ class MonocularMode : public rclcpp::Node
         std::string OPENCV_WINDOW = ""; // Set during initialization
         std::string nodeName = ""; // Name of this node
         std::string vocFilePath = ""; // Path to ORB vocabulary provided by DBoW2 package
-        std::string settingsFilePath = ""; // Path to settings file provided by ORB_SLAM3 package
+        std::string settingsDirPath = "";  // Directory to monocular settings YAMLs
+        std::string settingsFilePath = ""; // Full path to settings YAML
         bool bSettingsFromPython = false; // Flag set once when experiment setting from python node is received
+        bool vslam_initialized_ = false; // Guard to avoid re-initialization
         
         std::string subexperimentconfigName = ""; // Subscription topic name
         std::string pubconfigackName = ""; // Publisher topic name
@@ -87,8 +93,18 @@ class MonocularMode : public rclcpp::Node
         rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subImgMsg_subscription_;
         rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr subTimestepMsg_subscription_;
 
+        //* Output publishers
+        rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher_;
+        std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+
+        //* Output configuration
+        std::string odom_topic_ = "/orb_slam3/odometry";
+        std::string odom_frame_id_ = "map";
+        std::string base_frame_id_ = "camera_link";
+        bool publish_tf_ = true;
+
         //* ORB_SLAM3 related variables
-        ORB_SLAM3::System* pAgent; // pointer to a ORB SLAM3 object
+        ORB_SLAM3::System* pAgent = nullptr; // pointer to a ORB SLAM3 object
         ORB_SLAM3::System::eSensor sensorType;
         bool enablePangolinWindow = false; // Shows Pangolin window output
         bool enableOpenCVWindow = false; // Shows OpenCV window output

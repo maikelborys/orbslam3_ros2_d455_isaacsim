@@ -190,6 +190,8 @@ public:
     Eigen::Vector3f GetImuVwb();
     bool isImuPreintegrated();
 
+    
+
     // For debugging
     double GetTimeFromIMUInit();
     bool isLost();
