@@ -17,10 +17,12 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 # find_package(your_custom_msg_interface REQUIRED)
 find_package(cv_bridge REQUIRED)
@@ -53,10 +55,12 @@ include_directories(
 set(THIS_PACKAGE_INCLUDE_DEPENDS
   rclcpp
   rclpy
+  std_srvs
   std_msgs
   sensor_msgs
   nav_msgs
   geometry_msgs
+  visualization_msgs
   tf2_ros
   # your_custom_msg_interface
   cv_bridge
@@ -208,25 +212,27 @@ install(TARGETS mono_node_cpp stereo_node_cpp stereo_inertial_node_cpp orb_slam3
   INCLUDES DESTINATION include/${PROJECT_NAME}
 )
 
-# Direct RealSense + ORB-SLAM3 test (no ROS2)
-add_executable(test_realsense_direct
-  test_realsense_direct.cpp
-)
+# Direct RealSense + ORB-SLAM3 test (no ROS2) — only if source exists
+if(EXISTS ${PROJECT_SOURCE_DIR}/test_realsense_direct.cpp)
+  add_executable(test_realsense_direct
+    test_realsense_direct.cpp
+  )
 
-ament_target_dependencies(test_realsense_direct
-  PUBLIC ${THIS_PACKAGE_INCLUDE_DEPENDS}
-)
+  ament_target_dependencies(test_realsense_direct
+    PUBLIC ${THIS_PACKAGE_INCLUDE_DEPENDS}
+  )
 
-target_link_libraries(test_realsense_direct
-  PUBLIC
-    orb_slam3_lib
-    realsense2::realsense2
-    ${OpenCV_LIBS}
-)
+  target_link_libraries(test_realsense_direct
+    PUBLIC
+      orb_slam3_lib
+      realsense2::realsense2
+      ${OpenCV_LIBS}
+  )
 
-install(TARGETS test_realsense_direct
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
-)
+  install(TARGETS test_realsense_direct
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
+  )
+endif()
 
 # Tell downstream packages where to find the headers
 ament_export_include_directories(include)
@@ -243,12 +249,25 @@ ament_export_dependencies(
 ament_python_install_package(${PROJECT_NAME}) # Install the modules in ros2_orb_slam3/ros2_orb_slam3 folder
 
 # Install Python executibles
-install(PROGRAMS
-  scripts/mono_driver_node.py
-  scripts/realsense_mono_bridge_node.py
-  scripts/realsense_stereo_bridge_node.py
-  DESTINATION lib/${PROJECT_NAME}
-)
+# Install Python scripts if they exist
+if(EXISTS ${PROJECT_SOURCE_DIR}/scripts/mono_driver_node.py)
+  install(PROGRAMS
+    scripts/mono_driver_node.py
+    DESTINATION lib/${PROJECT_NAME}
+  )
+endif()
+if(EXISTS ${PROJECT_SOURCE_DIR}/scripts/realsense_mono_bridge_node.py)
+  install(PROGRAMS
+    scripts/realsense_mono_bridge_node.py
+    DESTINATION lib/${PROJECT_NAME}
+  )
+endif()
+if(EXISTS ${PROJECT_SOURCE_DIR}/scripts/realsense_stereo_bridge_node.py)
+  install(PROGRAMS
+    scripts/realsense_stereo_bridge_node.py
+    DESTINATION lib/${PROJECT_NAME}
+  )
+endif()
 
 # Install launch files
 install(DIRECTORY launch/

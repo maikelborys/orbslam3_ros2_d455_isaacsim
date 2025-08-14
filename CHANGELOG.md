@@ -1,5 +1,44 @@
 ## Changelog
 
+Date: 2025-08-14
+
+### Stereo Node: Map Loading and Localization Mode
+- **Map Loading**: Added support for loading pre-built maps via `load_atlas_basename` parameter
+- **Localization Mode**: Added `start_localization_only` parameter to run in pure localization mode
+- **Automatic Localization Button**: Fixed viewer to automatically check "Localization Mode" button when atlas is loaded
+- **Reset Button Service**: Added `/press_reset_button` service (`std_srvs/Trigger`) to programmatically press the RESET button
+- **Proper State Management**: Reset service properly handles localization mode by deactivating before reset and reactivating after
+- **RViz Visualization**: Added path publishing (`/orb_slam3/path`) and map visualization (`/orb_slam3/markers`) for better debugging
+
+**Implementation Details:**
+- **Atlas Loading**: Uses `ORB_SLAM3_LOAD_ATLAS` environment variable and dynamic YAML patching
+- **Viewer Integration**: Modified `Viewer.cc` to check system state and set localization button accordingly
+- **Service Architecture**: Clean ROS2 service implementation with proper error handling and logging
+
+**Usage:**
+```bash
+# Start in localization mode with loaded map
+ros2 run ros2_orb_slam3 stereo_node_cpp --ros-args \
+  -p start_localization_only:=true \
+  -p load_atlas_basename:=/path/to/map_basename
+
+# Press reset button programmatically
+ros2 service call /press_reset_button std_srvs/srv/Trigger {}
+```
+
+### Stereo‑Inertial: Map saving service and path handling
+- Added a minimal ROS 2 service `save_map` (`std_srvs/Trigger`) in `stereo_inertial_node_cpp` to persist the current ORB‑SLAM3 atlas.
+- Introduced parameter `maps_dir` (default: `/home/robot/ros2_test/src/ros2_orb_slam3/maps`) to control where saved maps are stored.
+- Implementation detail: ORB‑SLAM3 `System::SaveMap(<base_name>)` expects a base filename (no extension). Using absolute paths could produce an "output stream error" and log a doubled prefix (e.g., `.//home/...`). To ensure reliability, the node now:
+  - Saves using a simple base name in the working directory, and
+  - Moves the resulting `<base_name>.osa` into `maps_dir` atomically.
+- Result: Service reliably produces timestamped files like `map_YYYYmmdd_HHMMSS.osa` under `maps_dir`.
+
+Usage:
+- While `stereo_inertial_node_cpp` runs, call:
+  - `ros2 service call /save_map std_srvs/srv/Trigger {}`
+- Response includes the final path of the saved `.osa` file.
+
 Date: 2025-08-12
 
 ### Stereo‑Inertial (D455) updates

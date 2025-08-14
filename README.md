@@ -181,12 +181,78 @@ ros2 run ros2_orb_slam3 stereo_inertial_node_cpp --ros-args \
   -p right_image_topic:=/camera/camera/infra2/image_rect_raw \
   -p imu_topic:=/camera/camera/imu \
   -p do_rectify:=false -p use_clahe:=false \
-  -p odom_topic:=/orb_slam3/odometry -p odom_frame_id:=map -p base_frame_id:=camera_link -p publish_tf:=true
+  -p odom_topic:=/orb_slam3/odometry -p odom_frame_id:=map -p base_frame_id:=camera_link -p publish_tf:=true \
+  -p maps_dir:=$HOME/ros2_test/src/ros2_orb_slam3/maps
 ```
 Notes:
 - If you set `do_rectify:=true`, your YAML must provide `LEFT.*`/`RIGHT.*` rectification blocks.
 - IMU initialization: set `IMU.fastInit: 1` in the YAML to bypass the “not enough acceleration” gate if starting gently.
 - Performance: 640x480@30 tends to be smoother on modest CPUs.
+
+### Map saving (Stereo‑Inertial)
+- Service: `save_map` (`std_srvs/Trigger`)
+- Directory: controlled by `maps_dir` parameter (default: `$HOME/ros2_test/src/ros2_orb_slam3/maps`)
+- File name: `map_YYYYmmdd_HHMMSS.osa`
+
+How to save while the node is running:
+```bash
+cd $HOME/ros2_test && source ./install/setup.bash
+ros2 service call /save_map std_srvs/srv/Trigger {}
+```
+If successful, the response message shows the full path of the saved `.osa` file.
+
+Implementation note: ORB‑SLAM3 `System::SaveMap()` writes reliably when given a simple base name (no extension) in the working directory. The node saves with a base name and then moves the resulting `.osa` into `maps_dir` to avoid path prefix issues.
+
+## 🗺️ **Map Loading and Localization Mode**
+
+### **Loading Pre-built Maps**
+The stereo node can load previously saved maps and run in localization mode:
+
+```bash
+# Start stereo node in localization mode with loaded map
+ros2 run ros2_orb_slam3 stereo_node_cpp --ros-args \
+  -p voc_file_arg:=/home/robot/ros2_test/src/ros2_orb_slam3/orb_slam3/Vocabulary/ORBvoc.txt.bin \
+  -p settings_file_path_arg:=/home/robot/ros2_test/src/ros2_orb_slam3/orb_slam3/config/Stereo/ \
+  -p settings_name:=RealSense_D455 \
+  -p left_image_topic:=/camera/camera/infra1/image_rect_raw \
+  -p right_image_topic:=/camera/camera/infra2/image_rect_raw \
+  -p odom_topic:=/orb_slam3/odometry \
+  -p odom_frame_id:=map -p base_frame_id:=camera_link -p publish_tf:=true \
+  -p start_localization_only:=true \
+  -p load_atlas_basename:=/home/robot/ros2_test/src/ros2_orb_slam3/maps/map_20250814_003345
+```
+
+### **Reset Button Service**
+Programmatically press the RESET button in the ORB-SLAM3 viewer:
+
+```bash
+# Press reset button via service
+ros2 service call /press_reset_button std_srvs/srv/Trigger {}
+```
+
+**Features:**
+- ✅ **Automatic Localization Mode**: Viewer automatically checks "Localization Mode" button when atlas is loaded
+- ✅ **Proper State Management**: Reset service properly handles localization mode transitions
+- ✅ **RViz Visualization**: Path (`/orb_slam3/path`) and map points (`/orb_slam3/markers`) for debugging
+- ✅ **No Manual Button Pressing**: Fully automated localization workflow
+
+### **Localization Workflow**
+1. **Build a map** using stereo-inertial node and save it
+2. **Load the map** in stereo node with `start_localization_only:=true`
+3. **Localization starts automatically** - no manual button pressing needed
+4. **Use reset service** if needed: `ros2 service call /press_reset_button std_srvs/srv/Trigger {}`
+
+### **RViz Configuration**
+Use the provided RViz config for visualization:
+```bash
+rviz2 -d ~/ros2_test/src/ros2_orb_slam3/rviz/orbslam3.rviz
+```
+
+**Available Topics:**
+- `/orb_slam3/odometry` - Current pose
+- `/orb_slam3/path` - Trajectory path
+- `/orb_slam3/markers` - Map points and keyframes
+- `/tf` - Transform tree
 
 
 
@@ -222,14 +288,14 @@ Notes:
 ## 🚀 TODO List - Complete SLAM System Roadmap
 
 ### 🔧 **Core SLAM Features**
-- [ ] **Map Management**
-  - [ ] Map saving/loading (binary and text formats)
+- [x] **Map Management**
+  - [x] Map saving/loading (binary and text formats)
   - [ ] Map merging and optimization
   - [ ] Multi-session mapping support
   - [ ] Map versioning and compatibility
-- [ ] **Localization & Relocalization**
-  - [ ] Standalone localization mode
-  - [ ] Global relocalization from scratch
+- [x] **Localization & Relocalization**
+  - [x] Standalone localization mode
+  - [x] Global relocalization from scratch
   - [ ] Loop closure detection and optimization
   - [ ] Kidnapped robot problem solver
 - [ ] **Robustness Improvements**
@@ -240,11 +306,11 @@ Notes:
 
 
 ### 📊 **Visualization & Monitoring**
-- [ ] **RViz2 Integration**
-  - [ ] Point cloud visualization
-  - [ ] Trajectory plotting
-  - [ ] Keyframe visualization
-  - [ ] Map landmarks display
+- [x] **RViz2 Integration**
+  - [x] Point cloud visualization
+  - [x] Trajectory plotting
+  - [x] Keyframe visualization
+  - [x] Map landmarks display
   - [ ] Loop closure visualization
   - [ ] Real-time performance metrics
 

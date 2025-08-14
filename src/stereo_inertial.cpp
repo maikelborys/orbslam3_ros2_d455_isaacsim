@@ -1,6 +1,7 @@
 #include "ros2_orb_slam3/stereo_inertial.hpp"
 #include <builtin_interfaces/msg/time.hpp>
 #include <opencv2/core/persistence.hpp>
+#include <filesystem>
 
 ImageGrabber::ImageGrabber()
 {
@@ -22,6 +23,7 @@ ImageGrabber::ImageGrabber()
     this->declare_parameter<bool>("drop_on_time_jump", false);
     this->declare_parameter<double>("min_parallax_deg", 1.0);
     this->declare_parameter<int>("min_tracking_points", 100);
+    this->declare_parameter<std::string>("maps_dir", "/home/robot/ros2_test/src/ros2_orb_slam3/maps");
     // No strict IMU/timestamp gates by default
 
     initializeFromParameters();
@@ -48,6 +50,12 @@ ImageGrabber::ImageGrabber()
     odomPublisher_ = this->create_publisher<nav_msgs::msg::Odometry>(
         this->get_parameter("odom_topic").as_string(), 10);
     tfBroadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+
+    // Minimal SaveMap service
+    srvSaveMap_ = this->create_service<std_srvs::srv::Trigger>(
+        "save_map",
+        std::bind(&ImageGrabber::handleSaveMap, this, std::placeholders::_1, std::placeholders::_2)
+    );
 
     // Rectification maps
     if (do_rectify) {
@@ -88,6 +96,62 @@ void ImageGrabber::initializeFromParameters()
     }
     slam_system_ = std::make_unique<ORB_SLAM3::System>(
         vocFilePath_, settings_yaml_path, ORB_SLAM3::System::IMU_STEREO, true);
+}
+
+void ImageGrabber::handleSaveMap(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
+                                 std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+{
+    if (!slam_system_) {
+        response->success = false;
+        response->message = "SLAM system not initialized";
+        return;
+    }
+    // Save using a simple base name in CWD (ORB-SLAM3 prefixes with "./"), then move to maps_dir
+    const std::string maps_dir = this->get_parameter("maps_dir").as_string();
+    try { std::filesystem::create_directories(maps_dir); } catch (...) {}
+    auto now = std::chrono::system_clock::now();
+    const std::time_t tt = std::chrono::system_clock::to_time_t(now);
+    std::tm tm{};
+    localtime_r(&tt, &tm);
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "map_%04d%02d%02d_%02d%02d%02d", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    const std::string base_name(buf);
+    bool ok = false;
+    try {
+        ok = slam_system_->SaveMap(base_name);
+    } catch (const std::exception& e) {
+        response->success = false;
+        response->message = std::string("Exception during SaveMap: ") + e.what();
+        return;
+    }
+    if (!ok) {
+        response->success = false;
+        response->message = "SaveMap returned false";
+        return;
+    }
+
+    // Move the produced file (likely at ./<base_name>.osa) into maps_dir
+    const std::string produced1 = base_name + ".osa";
+    const std::string produced2 = std::string("./") + base_name + ".osa";
+    const std::string final_path = maps_dir + std::string("/") + base_name + ".osa";
+    std::error_code ec;
+    if (std::filesystem::exists(produced1)) {
+        std::filesystem::rename(produced1, final_path, ec);
+    } else if (std::filesystem::exists(produced2)) {
+        std::filesystem::rename(produced2, final_path, ec);
+    } else {
+        response->success = false;
+        response->message = "Saved, but output file not found in working directory";
+        return;
+    }
+    if (ec) {
+        response->success = false;
+        response->message = std::string("Saved, but failed to move to maps_dir: ") + ec.message();
+        return;
+    }
+
+    response->success = true;
+    response->message = std::string("Saved atlas to ") + final_path;
 }
 
 void ImageGrabber::setupRectificationMaps(const std::string &settings_yaml_path)

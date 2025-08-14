@@ -171,6 +171,15 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     cout << "Seq. Name: " << strSequence << endl;
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor, settings_, strSequence);
+    
+    // If we loaded an atlas, set up proper initial state for localization
+    if(loadedAtlas)
+    {
+        cout << "Atlas loaded - setting up for localization mode" << endl;
+        // Immediately set localization mode when atlas is loaded
+        mpTracker->InformOnlyTracking(true);
+        cout << "Localization mode activated at startup" << endl;
+    }
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR || mSensor==IMU_MONOCULAR,
@@ -1480,9 +1489,14 @@ bool System::LoadAtlas(int type)
     string strFileVoc, strVocChecksum;
     bool isRead = false;
 
-    string pathLoadFileName = "./";
-    pathLoadFileName = pathLoadFileName.append(mStrLoadAtlasFromFile);
-    pathLoadFileName = pathLoadFileName.append(".osa");
+    // Build load path robustly: accept absolute basename or path with/without .osa
+    std::string pathLoadFileName = mStrLoadAtlasFromFile;
+    if(pathLoadFileName.size() < 4 || pathLoadFileName.substr(pathLoadFileName.size()-4) != ".osa"){
+        pathLoadFileName += ".osa";
+    }
+    if(!pathLoadFileName.empty() && pathLoadFileName[0] != '/'){
+        pathLoadFileName = std::string("./") + pathLoadFileName;
+    }
 
     if(type == TEXT_FILE) // File text
     {

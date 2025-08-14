@@ -21,6 +21,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <tf2_ros/transform_broadcaster.h>
+#include <std_srvs/srv/trigger.hpp>
 
 #include "System.h"
 #include "ImuTypes.h"
@@ -83,6 +84,8 @@ public:
 private:
     void initializeFromParameters();
     void setupRectificationMaps(const std::string &settings_yaml_path);
+    void handleSaveMap(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+                       std::shared_ptr<std_srvs::srv::Trigger::Response> response);
 
     // Topics
     std::string leftImageTopic_ = "/camera/camera/infra1/image_rect_raw";
@@ -106,6 +109,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_img_right;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odomPublisher_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tfBroadcaster_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srvSaveMap_;
 };
 
 #endif

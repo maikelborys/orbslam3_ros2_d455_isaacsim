@@ -19,8 +19,11 @@
 #include <opencv2/opencv.hpp>
 
 #include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <tf2_ros/transform_broadcaster.h>
+#include <visualization_msgs/msg/marker_array.hpp>
+#include "std_srvs/srv/trigger.hpp"
 
 #include "System.h"
 
@@ -48,6 +51,7 @@ class StereoMode : public rclcpp::Node {
     bool vslam_initialized_ = false;
     bool enablePangolinWindow = true;
     bool enableOpenCVWindow = false;
+    std::string selected_atlas_basename_ = "";
 
     // Topics
     std::string left_image_topic_ = "/camera/camera/infra1/image_rect_raw";
@@ -61,13 +65,38 @@ class StereoMode : public rclcpp::Node {
     std::shared_ptr<message_filters::Synchronizer<ApproxPolicy>> sync_;
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_publisher_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr viz_publisher_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
     // Output config
     std::string odom_topic_ = "/orb_slam3/odometry";
+    std::string path_topic_ = "/orb_slam3/path";
+    std::string viz_topic_ = "/orb_slam3/markers";
     std::string odom_frame_id_ = "map";
     std::string base_frame_id_ = "camera_link";
     bool publish_tf_ = true;
+    bool start_localization_only_ = false;
+
+    // Path accumulation
+    nav_msgs::msg::Path path_msg_;
+
+    // Timer for visualization
+    rclcpp::TimerBase::SharedPtr viz_timer_;
+    void publishVisualization();
+
+    // Services
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_button_service_;
+    void handlePressResetButton(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+                               std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+
+    // Relocalization guard
+    bool relocalized_ = false;
+    int ok_streak_ = 0;
+    int required_ok_streak_ = 5;
+
+    // Atlas selection
+    std::string temp_settings_path_ = "";
 
     // Timing
     // Helpers / callbacks

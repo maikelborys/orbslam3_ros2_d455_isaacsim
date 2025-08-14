@@ -182,7 +182,9 @@ void Viewer::Run()
     pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames",true,true);
     pangolin::Var<bool> menuShowGraph("menu.Show Graph",false,true);
     pangolin::Var<bool> menuShowInertialGraph("menu.Show Inertial Graph",true,true);
-    pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
+    // Check if system is already in localization mode (for atlas loading)
+    bool initialLocalizationMode = mpTracker->mbOnlyTracking;
+    pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",initialLocalizationMode,true);
     pangolin::Var<bool> menuReset("menu.Reset",false,false);
     pangolin::Var<bool> menuStop("menu.Stop",false,false);
     pangolin::Var<bool> menuStepByStep("menu.Step By Step",false,true);  // false, true
@@ -207,7 +209,7 @@ void Viewer::Run()
     cv::namedWindow("ORB-SLAM3: Current Frame");
 
     bool bFollow = true;
-    bool bLocalizationMode = false;
+    bool bLocalizationMode = initialLocalizationMode;
     bool bStepByStep = false;
     bool bCameraView = true;
 
